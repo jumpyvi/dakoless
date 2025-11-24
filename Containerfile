@@ -1,6 +1,7 @@
 FROM scratch AS ctx
 
 COPY files /files
+COPY --from=ghcr.io/projectbluefin/common:latest /system_files /files
 COPY build.sh /build.sh
 
 FROM ghcr.io/alatiera/gnomeos-custom/gnomeos-homed:nightly
