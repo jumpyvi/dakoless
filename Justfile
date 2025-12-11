@@ -1,10 +1,10 @@
-image_name := env("BUILD_IMAGE_NAME", "bluefin-distroless")
+image_name := env("BUILD_IMAGE_NAME", "ghcr.io/projectbluefin/distroless")
 image_tag := env("BUILD_IMAGE_TAG", "latest")
 base_dir := env("BUILD_BASE_DIR", ".")
 filesystem := env("BUILD_FILESYSTEM", "btrfs")
 
 build-containerfile $image_name=image_name:
-    sudo podman build --squash-all -t "${image_name}:latest" .
+    sudo podman build --format oci --security-opt label=disable --squash-all -t "${image_name}:latest" .
 
 bootc *ARGS:
     sudo podman run \
@@ -37,3 +37,13 @@ generate-bootable-image $base_dir=base_dir $filesystem=filesystem:
 rootful $image=image_name:
     #!/usr/bin/env bash
     podman image scp $USER@localhost::$image root@localhost::$image
+
+run-vm $base_dir=base_dir:
+    qemu-system-x86_64 \
+        -machine pc-q35-10.1 \
+        -m 8G \
+        -smp 4 \
+        -cpu host \
+        -enable-kvm \
+        -drive if=pflash,format=qcow2,readonly=on,file=/usr/share/edk2/ovmf/OVMF_CODE_4M.qcow2 \
+        -drive file={{base_dir}}/bootable.img,format=raw,if=virtio

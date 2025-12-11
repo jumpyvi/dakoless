@@ -13,4 +13,7 @@ RUN --mount=type=tmpfs,dst=/var \
     --mount=type=bind,from=ctx,source=/,dst=/tmp/ctx \
     /tmp/ctx/build.sh
 
+LABEL containers.bootc=1
+LABEL org.opencontainers.image.source="https://github.com/projectbluefin/distroless"
+
 RUN bootc container lint
