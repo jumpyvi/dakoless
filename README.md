@@ -24,6 +24,12 @@
 - Waiting for bluefin's customizations to be moved to homebrew
 - Make a layer that all Bluefin's can use for system things, like the gnome schemas, etc, that can just be copied into the containerfile. 
 
+## Get started
+
+    ujust show-me-the-future
+
+Will build and run Bluefin in a VM. This image is based on GNOME50 so most of the desktop Bluefin changes don't work. The automation is in place though, just check back often to see progress.
+
 ## Screenshots
 
 <img width="2376" height="1336" alt="1" src="https://github.com/user-attachments/assets/495cdfe9-4af0-4604-9a3f-8a2fc806924f" />
