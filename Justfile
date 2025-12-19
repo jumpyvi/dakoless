@@ -2,12 +2,13 @@ image_name := env("BUILD_IMAGE_NAME", "ghcr.io/projectbluefin/distroless")
 image_tag := env("BUILD_IMAGE_TAG", "latest")
 base_dir := env("BUILD_BASE_DIR", ".")
 filesystem := env("BUILD_FILESYSTEM", "btrfs")
+sudo := if `id -u` == "0" { "" } else { "sudo" }
 
 build-containerfile $image_name=image_name:
-    sudo podman build --format oci --security-opt label=disable --squash-all -t "${image_name}:latest" .
+    {{sudo}} podman build --format oci --security-opt label=disable --squash-all -t "${image_name}:latest" .
 
 bootc *ARGS:
-    sudo podman run \
+    {{sudo}} podman run \
         --rm --privileged --pid=host \
         -it \
         -v /var/lib/containers:/var/lib/containers \
@@ -20,6 +21,7 @@ bootc *ARGS:
 generate-bootable-image $base_dir=base_dir $filesystem=filesystem:
     #!/usr/bin/env bash
     if [ ! -e "${base_dir}/bootable.img" ] ; then
+        echo "Allocating 50G for bootable.img..."
         fallocate -l 50G "${base_dir}/bootable.img"
     fi
 
@@ -52,4 +54,20 @@ run-vm $base_dir=base_dir:
 init-submodules:
     git submodule update --init --recursive
 
-show-me-the-future: init-submodules build-containerfile generate-bootable-image run-vm
+show-me-the-future: check-deps init-submodules build-containerfile generate-bootable-image run-vm
+
+clean:
+    rm -f bootable.img
+
+lint:
+    shellcheck build.sh
+
+check: lint check-deps
+    @echo "All static checks passed."
+
+check-deps:
+    @command -v podman >/dev/null 2>&1 || (echo "podman is not installed" && exit 1)
+    @command -v qemu-system-x86_64 >/dev/null 2>&1 || (echo "qemu-system-x86_64 is not installed" && exit 1)
+    @command -v just >/dev/null 2>&1 || (echo "just is not installed" && exit 1)
+    @command -v shellcheck >/dev/null 2>&1 || (echo "shellcheck is not installed" && exit 1)
+    @echo "All dependencies are installed."
