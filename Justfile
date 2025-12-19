@@ -20,6 +20,7 @@ bootc *ARGS:
 generate-bootable-image $base_dir=base_dir $filesystem=filesystem:
     #!/usr/bin/env bash
     if [ ! -e "${base_dir}/bootable.img" ] ; then
+        echo "Allocating 50G for bootable.img..."
         fallocate -l 50G "${base_dir}/bootable.img"
     fi
 
@@ -52,4 +53,13 @@ run-vm $base_dir=base_dir:
 init-submodules:
     git submodule update --init --recursive
 
-show-me-the-future: init-submodules build-containerfile generate-bootable-image run-vm
+show-me-the-future: check-deps init-submodules build-containerfile generate-bootable-image run-vm
+
+clean:
+    rm -f bootable.img
+
+check-deps:
+    @command -v podman >/dev/null 2>&1 || (echo "podman is not installed" && exit 1)
+    @command -v qemu-system-x86_64 >/dev/null 2>&1 || (echo "qemu-system-x86_64 is not installed" && exit 1)
+    @command -v just >/dev/null 2>&1 || (echo "just is not installed" && exit 1)
+    @echo "All dependencies are installed."
