@@ -21,7 +21,7 @@ generate-bootable-image $base_dir=base_dir $filesystem=filesystem:
     #!/usr/bin/env bash
 
     just bootc install to-disk --composefs-backend \
-        /dev/sdb \
+         --via-loopback /data/bootable.img \
         --filesystem "${filesystem}" \
         --wipe \
         --bootloader systemd \
