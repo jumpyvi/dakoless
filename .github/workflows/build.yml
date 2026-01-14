@@ -79,15 +79,51 @@ jobs:
           sep-tags: " "
           sep-annotations: " "
 
+      - name: Mount BTRFS for podman storage
+        id: container-storage-action
+        uses: ublue-os/container-storage-action@911baca08baf30c8654933e9e9723cb399892140
+        with:
+          mount-opts: noatime,compress-force=zstd:2
+
+      - name: Mount BTRFS for /var/tmp
+        id: var-tmp-action
+        uses: ublue-os/container-storage-action@911baca08baf30c8654933e9e9723cb399892140
+        with:
+          mount-opts: noatime,compress-force=zstd:2
+          target-dir: /var/tmp
+
+      # - name: Build Image
+      #   id: build_image
+      #   uses: redhat-actions/buildah-build@7a95fa7ee0f02d552a32753e7414641a04307056 # v2
+      #   with:
+      #     containerfiles: ./Containerfile
+      #     image: ${{ env.IMAGE_NAME }}
+      #     tags: ${{ steps.metadata.outputs.tags }}
+      #     labels: ${{ steps.metadata.outputs.labels }}
+      #     oci: true
+      # 
       - name: Build Image
         id: build_image
-        uses: redhat-actions/buildah-build@7a95fa7ee0f02d552a32753e7414641a04307056 # v2
-        with:
-          containerfiles: ./Containerfile
-          image: ${{ env.IMAGE_NAME }}
-          tags: ${{ steps.metadata.outputs.tags }}
-          labels: ${{ steps.metadata.outputs.labels }}
-          oci: true
+        env:
+          META_LABELS: ${{ steps.metadata.outputs.labels }}
+          META_TAGS: ${{ steps.metadata.outputs.tags }}
+        run: |
+          set -x
+          BUILD_ARGS=("--squash-all")
+
+          # get tags from metadata action
+          for tag in $META_TAGS; do
+            BUILD_ARGS+=("--tag" "$IMAGE_NAME:$tag")
+          done
+
+          # get labels from metadata action
+          while IFS= read -r label; do
+          if [[ -n "$label" ]]; then
+            BUILD_ARGS+=("--label" "$label")
+          fi
+          done <<< "$META_LABELS"
+
+          podman build "${BUILD_ARGS[@]}" .
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3
