@@ -20,8 +20,12 @@ bootc *ARGS:
 generate-bootable-image $base_dir=base_dir $filesystem=filesystem:
     #!/usr/bin/env bash
 
+    if [ ! -e "${base_dir}/bootable.img" ] ; then
+        fallocate -l 50G "${base_dir}/bootable.img"
+    fi
+
     just bootc install to-disk --composefs-backend \
-         --via-loopback /data/bootable.img \
+        --via-loopback /data/bootable.img \
         --filesystem "${filesystem}" \
         --wipe \
         --bootloader systemd \
@@ -36,15 +40,27 @@ rootful $image=image_name:
     podman image scp $USER@localhost::$image root@localhost::$image
 
 run-vm $base_dir=base_dir:
-    qemu-system-x86_64 \
+    #!/usr/bin/env bash
+    set -e
+    if command -v qemu-system-x86_64 >/dev/null 2>&1; then
+        QEMU="qemu-system-x86_64"
+        OVMF="/usr/share/edk2/ovmf/OVMF_CODE_4M.qcow2"
+        OVMF_FMT="qcow2"
+    else
+        QEMU="flatpak run --command=/app/lib/extensions/Qemu/bin/qemu-system-x86_64 org.virt_manager.virt-manager"
+        OVMF="/app/lib/extensions/Qemu/share/qemu/edk2-x86_64-code.fd"
+        OVMF_FMT="raw"
+    fi
+    exec $QEMU \
         -machine pc-q35-10.1 \
         -m 8G \
         -smp 4 \
         -cpu host \
         -enable-kvm \
         -device virtio-vga \
-        -drive if=pflash,format=qcow2,readonly=on,file=/usr/share/edk2/ovmf/OVMF_CODE_4M.qcow2 \
+        -drive if=pflash,format=$OVMF_FMT,readonly=on,file=$OVMF \
         -drive file={{base_dir}}/bootable.img,format=raw,if=virtio
+
 
 init-submodules:
     git submodule update --init --recursive
@@ -56,6 +72,13 @@ clean:
 
 check-deps:
     @command -v podman >/dev/null 2>&1 || (echo "podman is not installed" && exit 1)
-    @command -v qemu-system-x86_64 >/dev/null 2>&1 || (echo "qemu-system-x86_64 is not installed" && exit 1)
     @command -v just >/dev/null 2>&1 || (echo "just is not installed" && exit 1)
-    @echo "All dependencies are installed."
+    @if command -v qemu-system-x86_64 >/dev/null 2>&1; then \
+        echo "qemu-system-x86_64 found in system PATH"; \
+    elif flatpak run --command="qemu-system-x86_64" org.virt_manager.virt-manager --version >/dev/null 2>&1; then \
+        echo "qemu-system-x86_64 found via flatpak"; \
+    else \
+        echo "Error: qemu-system-x86_64 not found (neither system or flatpak)"; \
+        exit 1; \
+    fi
+    @echo "Required dependencies are installed."
