@@ -50,7 +50,7 @@ Will build and run Bluefin in a VM. This image is based on GNOME50 so most of th
 >
 > Bootloader upgrades will not work via this method, as `dakota` does not have `bootupd` or `grub` in its image. You will be able to update the OS with `bootc update`, but the bootloader will never upgrade to fix security problems and such.
 >
-> Rebasing from the Fedora or CentOS based Bluefin is currently broken! Until we switch those images off of [ublue-os/legacy-rechunk](https://github.com/ublue-os/legacy-rechunk), you will need to rebase from a standard [Fedora Silverblue](https://fedoraproject.org/atomic-desktops/silverblue/) installation, otherwise GDM and many other services will be broken.
+> Rebasing from the Fedora or CentOS based Bluefin is currently broken! Until we switch those images off of [ublue-os/legacy-rechunk](https://github.com/ublue-os/legacy-rechunk), you will need to perform a manual workaround to fix your groups. See below for more details.
 
 It is possible to switch your existing installation to the new Bluefin. All you need to do is run the following command: 
 
@@ -59,6 +59,30 @@ bootc switch ghcr.io/projectbluefin/dakota:latest
 ```
 
 Reboot, and you will have the new Bluefin!
+
+#### Fix your groups when rebasing from Fedora Silverblue
+
+
+> [!NOTE]
+>
+> This is a very hacky workaround! It is not guaranteed to work for you.
+
+Fedora Silverblue splits their groups into 2 files: `/etc/group` and `/usr/lib/group`. `/etc/group` contains only your user's groups, and not any of the system groups. `dakota` does not have a `/usr/lib/group`, and as a result, things break **hard.**
+
+Working around this is simple, yet annoying. First, before you boot into Bluefin, hit `e` on the boot entry in `grub`, and go to the end of the line that starts with `linux`. Put a space, then type in `init=/bin/bash`.
+
+<img width="1629" height="952" alt="image" src="https://github.com/user-attachments/assets/3ff24caa-7070-443f-88aa-c613010d06d7" />
+
+
+Hit `f10`, and you will boot into a bash shell. You now need to type the following commands:
+
+```bash
+rm -f /etc/gshadow
+systemd-sysusers
+exec init
+```
+
+Typing those commands will populate your `/etc/group` file with the necessary groups. `exec init` will boot you into Bluefin.
 
 ### The composefs method (experimental backend!!!)
 
